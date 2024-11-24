@@ -8,13 +8,14 @@ const wss = new WebSocket.Server({ server });
 
 let pixels = {};
 
-wss.on('connection', (ws) => {
 
+app.use(express.static(__dirname));
+
+wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ action: 'init', data: pixels }));
 
     ws.on('message', (message) => {
         const { action, data } = JSON.parse(message);
-
         if (action === 'draw') {
             pixels[data.id] = data;
             wss.clients.forEach((client) => {
@@ -32,8 +33,17 @@ wss.on('connection', (ws) => {
                 }
             });
         }
+
+        if (action === 'chat') {
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ action: 'chat', data }));
+                }
+            });
+        }
     });
 });
+
 
 server.listen(8080, () => {
     console.log('Server is listening on port 8080');
