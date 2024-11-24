@@ -18,8 +18,8 @@ const ws = new WebSocket('ws://localhost:8080');
 
 canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor(event.clientX - rect.left);
-    const y = Math.floor(event.clientY - rect.top);
+    const x = Math.floor((event.clientX - rect.left) / 20) * 20;
+    const y = Math.floor((event.clientY - rect.top) / 20) * 20;
     const id = `${x},${y}`;
 
     if (drawnPixels[id]) {
@@ -35,6 +35,20 @@ canvas.addEventListener('click', (event) => {
     }
 });
 
+sendMessage.addEventListener('click', () => {
+    const message = chatInput.value.trim();
+    if (message) {
+        const chatData = { action: 'chat', data: { username, message } };
+        ws.send(JSON.stringify(chatData));
+        chatInput.value = '';
+    }
+});
+
+chatInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        sendMessage.click();
+    }
+});
 
 ws.onmessage = (event) => {
     const { action, data } = JSON.parse(event.data);
@@ -42,17 +56,23 @@ ws.onmessage = (event) => {
 
     if (action === 'draw') {
         ctx.fillStyle = data.color;
-        ctx.fillRect(data.x, data.y, 10, 10);
+        ctx.fillRect(data.x, data.y, 20, 20);
         drawnPixels[data.id] = { x: data.x, y: data.y, color: data.color };
     } else if (action === 'erase') {
-        ctx.clearRect(data.x, data.y, 10, 10);
+        ctx.clearRect(data.x, data.y, 20, 20);
         delete drawnPixels[data.id];
     } else if (action === 'init') {
         Object.values(data).forEach((p) => {
             ctx.fillStyle = p.color;
-            ctx.fillRect(p.x, p.y, 10, 10);
+            ctx.fillRect(p.x, p.y, 20, 20);
             drawnPixels[p.id] = { x: p.x, y: p.y, color: p.color };
         });
+    }
+    if (action === 'chat') {
+        const chatEntry = document.createElement('div');
+        chatEntry.textContent = `${data.username}: ${data.message}`;
+        chatMessages.appendChild(chatEntry);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 };
 
